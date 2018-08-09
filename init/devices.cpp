@@ -322,7 +322,7 @@ std::vector<std::string> DeviceHandler::GetBlockDeviceSymlinks(const Uevent& uev
 
     std::vector<std::string> links;
 
-    /*LOG(VERBOSE)*/ << "found " << type << " device " << device;
+    LOG(VERBOSE) << "found " << type << " device " << device;
 
     auto link_path = "/dev/block/" + type + "/" + device;
 
