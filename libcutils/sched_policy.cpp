@@ -51,7 +51,12 @@ static inline SchedPolicy _policy(SchedPolicy p)
 
 static pthread_once_t the_once = PTHREAD_ONCE_INIT;
 
+static int __sys_supports_schedgroups = -1;
 static int __sys_supports_timerslack = -1;
+
+// File descriptors open to /dev/cpuctl/../tasks, setup by initialize, or -1 on error.
+static int bg_cgroup_fd = -1;
+static int fg_cgroup_fd = -1;
 
 // File descriptors open to /dev/cpuset/../tasks, setup by initialize, or -1 on error
 static int system_bg_cpuset_fd = -1;
@@ -140,6 +145,22 @@ bool schedboost_enabled() {
 
 static void __initialize() {
     const char* filename;
+
+     if (!access("/dev/cpuctl/tasks", W_OK)) {
+        __sys_supports_schedgroups = 1;
+        filename = "/dev/cpuctl/tasks";
+        fg_cgroup_fd = open(filename, O_WRONLY | O_CLOEXEC);
+        if (fg_cgroup_fd < 0) {
+            SLOGE("open of %s failed: %s\n", filename, strerror(errno));
+        }
+        filename = "/dev/cpuctl/bg_non_interactive/tasks";
+        bg_cgroup_fd = open(filename, O_WRONLY | O_CLOEXEC);
+        if (bg_cgroup_fd < 0) {
+            SLOGE("open of %s failed: %s\n", filename, strerror(errno));
+        }
+    } else {
+        __sys_supports_schedgroups = 0;
+    }
 
     if (cpusets_enabled()) {
         if (!access("/dev/cpuset/tasks", W_OK)) {
@@ -278,6 +299,7 @@ int get_sched_policy(int tid, SchedPolicy *policy)
 
 int set_cpuset_policy(int tid, SchedPolicy policy)
 {
+    int error = 0;
     // in the absence of cpusets, use the old sched policy
     if (!cpusets_enabled()) {
         return set_sched_policy(tid, policy);
@@ -289,44 +311,57 @@ int set_cpuset_policy(int tid, SchedPolicy policy)
     policy = _policy(policy);
     pthread_once(&the_once, __initialize);
 
+
     int fd = -1;
+    int cgroup_fd = -1;
     int boost_fd = -1;
     switch (policy) {
     case SP_BACKGROUND:
         fd = bg_cpuset_fd;
+        cgroup_fd = bg_cgroup_fd;
         boost_fd = bg_schedboost_fd;
         break;
     case SP_FOREGROUND:
     case SP_AUDIO_APP:
     case SP_AUDIO_SYS:
         fd = fg_cpuset_fd;
+        cgroup_fd = fg_cgroup_fd;
         boost_fd = fg_schedboost_fd;
         break;
     case SP_TOP_APP :
         fd = ta_cpuset_fd;
+        cgroup_fd = fg_cgroup_fd;
         boost_fd = ta_schedboost_fd;
         break;
     case SP_SYSTEM:
         fd = system_bg_cpuset_fd;
+        cgroup_fd = bg_cgroup_fd;
         break;
     default:
         boost_fd = fd = -1;
         break;
     }
 
+    if( __sys_supports_schedgroups && cgroup_fd > 0 ) {
+        if (add_tid_to_cgroup(tid, cgroup_fd) != 0) {
+            //if (errno != ESRCH && errno != ENOENT)
+                //error = -errno;
+        }
+    }
+
     if (add_tid_to_cgroup(tid, fd) != 0) {
         if (errno != ESRCH && errno != ENOENT)
-            return -errno;
+                error = -errno;
     }
 
     if (schedboost_enabled()) {
         if (boost_fd > 0 && add_tid_to_cgroup(tid, boost_fd) != 0) {
-            if (errno != ESRCH && errno != ENOENT)
-                return -errno;
+            //if (errno != ESRCH && errno != ENOENT)
+                //error = -errno;
         }
     }
 
-    return 0;
+    return error;
 }
 
 static void set_timerslack_ns(int tid, unsigned long slack) {

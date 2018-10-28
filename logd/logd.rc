@@ -7,6 +7,7 @@ service logd /system/bin/logd
     user logd
     group logd system package_info readproc
     writepid /dev/cpuset/system-background/tasks
+    writepid /dev/cpuctl/bg_non_interactive/tasks
 
 service logd-reinit /system/bin/logd --reinit
     oneshot
@@ -14,6 +15,7 @@ service logd-reinit /system/bin/logd --reinit
     user logd
     group logd
     writepid /dev/cpuset/system-background/tasks
+    writepid /dev/cpuctl/bg_non_interactive/tasks
 
 on fs
     write /dev/event-log-tags "# content owned by logd
