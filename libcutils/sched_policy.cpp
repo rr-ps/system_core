@@ -162,6 +162,8 @@ static void __initialize() {
         __sys_supports_schedgroups = 0;
     }
 
+    //__sys_supports_schedgroups = 0;
+
     if (cpusets_enabled()) {
         if (!access("/dev/cpuset/tasks", W_OK)) {
 
@@ -335,7 +337,7 @@ int set_cpuset_policy(int tid, SchedPolicy policy)
         break;
     case SP_SYSTEM:
         fd = system_bg_cpuset_fd;
-        cgroup_fd = bg_cgroup_fd;
+        cgroup_fd = fg_cgroup_fd;
         break;
     default:
         boost_fd = fd = -1;

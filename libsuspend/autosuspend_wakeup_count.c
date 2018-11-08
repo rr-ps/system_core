@@ -45,6 +45,7 @@ static sem_t suspend_lockout;
 static const char *sleep_state = "mem";
 static void (*wakeup_func)(bool success) = NULL;
 static int sleep_time = BASE_SLEEP_TIME;
+static int initialized = 0;
 
 static void update_sleep_time(bool success) {
     if (success) {
@@ -52,7 +53,7 @@ static void update_sleep_time(bool success) {
         return;
     }
     // double sleep time after each failure up to one minute
-    sleep_time = MIN(sleep_time * 2, 60000000);
+    sleep_time = MIN(sleep_time * 2, 5000000);
 }
 
 static void *suspend_thread_func(void *arg __attribute__((unused)))
@@ -174,6 +175,12 @@ struct autosuspend_ops *autosuspend_wakeup_count_init(void)
     int ret;
     char buf[80];
 
+    if( initialized )  {
+        return &autosuspend_wakeup_count_ops;
+    } 
+
+    initialized = 1;
+
     state_fd = TEMP_FAILURE_RETRY(open(SYS_POWER_STATE, O_RDWR));
     if (state_fd < 0) {
         strerror_r(errno, buf, sizeof(buf));
@@ -211,5 +218,6 @@ err_sem_init:
 err_open_wakeup_count:
     close(state_fd);
 err_open_state:
+    initialized = 0;
     return NULL;
 }

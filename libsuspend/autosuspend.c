@@ -33,6 +33,15 @@ static int autosuspend_init(void)
     if (autosuspend_inited) {
         return 0;
     }
+    autosuspend_inited = true;
+
+#if 0
+    autosuspend_ops = autosuspend_autosleep_init();
+    if (autosuspend_ops) {
+        goto out;
+    }
+#endif
+
 
     autosuspend_ops = autosuspend_wakeup_count_init();
     if (autosuspend_ops) {

@@ -9,6 +9,7 @@ cc_library {
 
     srcs: [
         "autosuspend.c",
+	    "autosuspend_autosleep.c",
         "autosuspend_wakeup_count.c",
     ],
     export_include_dirs: ["include"],
@@ -19,6 +20,6 @@ cc_library {
     ],
     cflags: [
         "-Werror",
-        // "-DLOG_NDEBUG=0",
+        //"-DLOG_NDEBUG=0",
     ],
 }

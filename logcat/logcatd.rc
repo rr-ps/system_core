@@ -61,5 +61,4 @@ service logcatd /system/bin/logcatd -L -b ${logd.logpersistd.buffer:-all} -v thr
     user logd
     group log
     writepid /dev/cpuset/system-background/tasks
-    writepid /dev/cpuctl/bg_non_interactive/tasks
     oom_score_adjust -600
